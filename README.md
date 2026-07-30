@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Smart Classroom Edge AI System
 
 This project is a clean starter scaffold for a Smart Classroom Edge AI System.
@@ -51,3 +52,6 @@ The API docs will be available at:
 ## Current Status
 
 The backend foundation has been implemented. Feature logic will be added later.
+=======
+# SmartBreeze
+>>>>>>> 3b98996496d6acc3af5d255e1efc884a2c6d4a56
