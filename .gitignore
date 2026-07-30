@@ -1,0 +1,18 @@
+.venv/
+__pycache__/
+*.pyc
+
+# Generated training outputs
+runs/
+cloud_training_dataset.zip
+*.cache
+
+# Runtime outputs
+runtime_state*.json
+*.log
+
+# Local/editor files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
