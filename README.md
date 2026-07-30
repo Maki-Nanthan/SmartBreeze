@@ -375,5 +375,5 @@ Please ensure your code follows the existing style and includes tests where appl
 |---|---|
 | **Product Owner** | P. Gowsihan |
 | **Scrum Master** | N. Makeja |
-| **Data Developers** | K.M.J. Bingusara Abhishek, Yasitha Rukshan Samarasingha, I.G.S.C. Dasanayaka |
+| **App Developers** | K.M.J. Bingusara Abhishek, Yasitha Rukshan Samarasingha, I.G.S.C. Dasanayaka |
 | **Data Scientists** | Mohammed Saad, Rajavisahan Kajaanan, Nahananthiny Gnanakrishnabalasingham |
