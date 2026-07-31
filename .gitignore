@@ -12,6 +12,9 @@ runtime_state*.json
 backend_state.json
 *.log
 
+# Local model backups
+model/best_current.pt
+
 # Local/editor files
 .vscode/
 .idea/
