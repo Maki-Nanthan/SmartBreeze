@@ -1,0 +1,3 @@
+ultralytics==8.4.110
+opencv-python-headless
+numpy

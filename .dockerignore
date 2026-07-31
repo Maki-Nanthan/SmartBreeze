@@ -1,0 +1,14 @@
+.venv
+datasets
+videos
+runs
+*.MOV
+*.mp4
+*.avi
+*.mkv
+*.jpg
+*.jpeg
+*.png
+__pycache__
+*.pyc
+runtime_state*.json
