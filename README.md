@@ -1,23 +1,26 @@
 # SmartBreeze
 
-
 <p align="center">
-  <strong>Edge-AI smart classroom management system</strong>
+  <strong>Edge-AI smart classroom human counting and AC control simulation</strong>
 </p>
 
 <p align="center">
-  Real-time occupancy detection · Environmental monitoring · Automated HVAC & lighting control
+  YOLO human detection - Dockerized model API - Interactive dark dashboard - Smart AC policy control
 </p>
 
 ---
 
 ## Overview
 
-**SmartBreeze** is an edge-AI powered system designed for smart classroom management. It detects room occupancy in real time, monitors environmental conditions (temperature, CO₂, humidity), and automatically controls HVAC, lighting, and air-quality systems to optimize comfort, energy efficiency, and safety.
+**SmartBreeze** is an Edge AI prototype for smart classroom management. It uses a trained YOLO model to count people in classroom video frames, sends the count to a backend simulation service, and controls a simulated AC system based on occupancy.
 
-The system processes data locally on edge devices for low latency and privacy, while a central **FastAPI** backend and **React** dashboard provide control, monitoring, and analytics.
+The project is designed as a working demo pipeline:
 
-**Target use cases:** lecture halls, classrooms, training rooms, meeting spaces, and smart buildings.
+```text
+classroom video/webcam frame -> AI model API -> person_count -> backend rules -> AC state -> dashboard
+```
+
+The AI model is separated from the backend business logic. The model only returns human count and detections. The backend decides LOW, MEDIUM, or HIGH occupancy and applies the AC control policy.
 
 ---
 
@@ -27,122 +30,123 @@ The system processes data locally on edge devices for low latency and privacy, w
 2. [System Architecture](#system-architecture)
 3. [Project Structure](#project-structure)
 4. [Getting Started](#getting-started)
-5. [Usage](#usage)
-6. [API Endpoints](#api-endpoints)
-7. [Configuration](#configuration)
-8. [Testing](#testing)
-9. [Deployment](#deployment)
-10. [Contributing](#contributing)
-11. [Team](#team)
+5. [Running the Demo](#running-the-demo)
+6. [Docker Model API](#docker-model-api)
+7. [API Endpoints](#api-endpoints)
+8. [Configuration](#configuration)
+9. [Training Notes](#training-notes)
+10. [Git LFS Notes](#git-lfs-notes)
+11. [Team Handoff](#team-handoff)
 
 ---
 
 ## Features
 
-- **Real-time occupancy detection** — AI-based people counting using edge cameras and sensors
-- **Environmental monitoring** — temperature, humidity, CO₂, and air quality tracking
-- **Automated climate control** — smart HVAC, lighting, and fan control based on occupancy and conditions
-- **Edge-first processing** — on-device inference (TensorFlow Lite / ONNX) for low latency and privacy
-- **Privacy-focused** — video frames processed locally; only metadata is transmitted
-- **Live dashboard** — React-based web interface for real-time monitoring and manual overrides
-- **Scene presets** — one-click configurations for lectures, exams, meetings, and empty rooms
-- **Analytics & reporting** — occupancy trends, energy usage, and space utilization insights
-- **Device management** — sensor status, calibration, firmware health, and remote configuration
-- **WebSocket support** — live data streaming to the dashboard without polling
-- **Dockerized deployment** — easy setup with Docker Compose for development and production
+- **Human counting AI model** using YOLO and a trained `best.pt` model.
+- **Model API** with `/health` and `/count` endpoints.
+- **Dockerized model service** for containerized AI inference.
+- **Backend AC simulation** that converts person count into occupancy and AC commands.
+- **Dark interactive dashboard** for live demo presentation.
+- **Video upload detection** through the browser dashboard.
+- **Webcam connection option** when a camera is available.
+- **Manual AC control** with `Auto`, `AC ON`, and `AC OFF` modes.
+- **Editable LOW/MEDIUM/HIGH policy cards** for people ranges and AC temperature.
+- **Stable AC delay logic** so AC changes do not happen instantly.
+- **Occupancy timeline** showing recent LOW, MEDIUM, and HIGH events.
 
 ---
 
 ## System Architecture
 
-```
-         ┌─────────────────────────────────┐
-         │      IoT Sensors & Cameras      │
-         │  (PIR, temperature, CO₂, camera) │
-         └──────────────┬──────────────────┘
-                        │
-         ┌──────────────┴──────────────┐
-         │                             │
-  ┌──────▼──────┐              ┌────────▼────────┐
-  │  Edge AI    │              │  Data Stream    │
-  │  Engine     │              │  Processor      │
-  │ (TensorFlow │              │  (MQTT / HTTP)  │
-  │  Lite / ONNX)│              └────────┬────────┘
-  └──────┬──────┘                       │
-         │                             │
-         └──────────────┬──────────────┘
-                        │
-         ┌──────────────▼──────────────┐
-         │       FastAPI Backend       │
-         │   (REST API · logic · DB)   │
-         └──────────────┬──────────────┘
-                        │
-         ┌──────────────┼──────────────┐
-         │              │              │
-  ┌──────▼──────┐ ┌──────▼──────┐ ┌────▼─────┐
-  │   React     │ │  PostgreSQL │ │  SQLite  │
-  │  Dashboard  │ │    (prod)   │ │   (dev)  │
-  └─────────────┘ └─────────────┘ └──────────┘
+```text
+              Local Video / Webcam
+                       |
+                       v
+              Browser Dashboard
+                       |
+                       v
+        Backend Simulation Server :8090
+                       |
+                       v
+             Model API /count :8080
+                       |
+                       v
+            YOLO best.pt Human Counter
+                       |
+                       v
+        person_count + detection boxes
+                       |
+                       v
+       Occupancy + AC policy + dashboard
 ```
 
 ### Data Flow
 
-```
-Sensors → Edge Device → FastAPI Backend → Database
-                ↓
-        Local AI Decisions → IoT Controllers (HVAC, lights, fans)
-
-React Dashboard ⇄ REST API / WebSocket ⇄ FastAPI Backend
+```text
+Frame -> model API -> person_count -> backend -> AC command -> dashboard
 ```
 
 ### Core Components
 
 | Component | Responsibility |
 |---|---|
-| **Data Acquisition** | Reads occupancy, temperature, CO₂, humidity, and camera data from ESP32/Arduino/Raspberry Pi nodes over MQTT or HTTP |
-| **Edge AI Engine** | Runs on-device people counting and anomaly detection using TensorFlow Lite or ONNX models |
-| **Backend (FastAPI)** | Provides REST API, business logic, state management, database access, and WebSocket streaming |
-| **Frontend (React + TypeScript)** | Displays live metrics, control panels, analytics charts, and device management screens |
-| **Database** | Stores time-series sensor readings, classroom state, device metadata, audit logs, and user actions |
+| `data_science/model_service.py` | Loads `model/best.pt` and exposes the human-counting API |
+| `model/best.pt` | Trained YOLO model used for classroom person detection |
+| `developer/backend/backend_simulation_server.py` | Backend state, AC logic, dashboard server, and API endpoints |
+| `developer/frontend/dashboard.html` | Dark dashboard UI for video/webcam demo and AC control |
+| `Dockerfile.model` | Builds the model API container |
+| `datasets/` | YOLO training, validation, and test dataset |
+| `videos/` | Demo classroom videos |
 
 ---
 
 ## Project Structure
 
-```
-smartbreeze/
-├── frontend/                      # React + TypeScript client
-│   ├── src/
-│   │   ├── components/            # Reusable UI components
-│   │   ├── pages/                 # Dashboard, Settings, Analytics, Devices
-│   │   ├── hooks/                 # Custom React hooks
-│   │   ├── services/              # API clients and WebSocket handlers
-│   │   ├── types/                 # Shared TypeScript interfaces
-│   │   ├── utils/                 # Utility functions
-│   │   └── App.tsx                # Main application entry
-│   ├── index.html
-│   ├── package.json
-│   └── vite.config.ts
-│
-├── backend/                       # FastAPI + Python server
-│   ├── app/
-│   │   ├── routers/               # API route definitions
-│   │   ├── services/              # Business logic layer
-│   │   ├── schemas/               # Pydantic request/response models
-│   │   ├── models/                # SQLAlchemy database models
-│   │   ├── database/              # Database connection and migrations
-│   │   ├── core/                  # Configuration, settings, utilities
-│   │   ├── ml/                    # Inference pipeline and model wrappers
-│   │   └── websocket/             # WebSocket handlers
-│   ├── tests/                     # Backend test suite
-│   ├── main.py                    # Application entry point
-│   ├── requirements.txt           # Python dependencies
-│   └── Dockerfile
-│
-├── docker-compose.yml             # Full-stack Docker orchestration
-├── .env.example                   # Environment variables template
-├── .gitignore
-└── README.md                      # This file
+```text
+SmartBreeze/
+  data_science/
+    auto_label.py
+    classroom_person.yaml
+    frame_extractor.py
+    model_service.py
+    prepare_cloud_dataset.py
+    split_dataset.py
+    train_model.py
+    README.md
+
+  developer/
+    backend/
+      backend_simulation_server.py
+      dashboard_server.py
+      edge_demo.py
+    frontend/
+      dashboard.html
+    README.md
+
+  model/
+    best.pt
+    README.md
+
+  datasets/
+    train/
+    valid/
+    test/
+
+  videos/
+    HIGH.MOV
+    MEDIUM.MOV
+    LOW.MOV
+    EMPTY.MOV
+    JANITOR.MOV
+    ARRIVAL -LEAVING.MOV
+
+  Dockerfile.model
+  requirements-docker.txt
+  README.md
+  .gitignore
+  .gitattributes
+  .dockerignore
+  yolo11n.pt
 ```
 
 ---
@@ -151,229 +155,333 @@ smartbreeze/
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) 18 or higher
-- [Python](https://www.python.org/) 3.9 or higher
-- npm (comes with Node.js) and pip
-- [Git](https://git-scm.com/)
-- [Docker](https://www.docker.com/) (optional, for containerized deployment)
+- Python 3.11
+- Git
+- Git LFS
+- Docker Desktop
+- PowerShell on Windows
 
-### 1. Clone the Repository
+### Clone the Repository
 
-```bash
-git clone https://github.com/your-username/smartbreeze.git
-cd smartbreeze
+```powershell
+git clone https://github.com/Maki-Nanthan/SmartBreeze.git
+cd SmartBreeze
+git switch complete-working-system
 ```
 
-### 2. Set Up the Backend
+### Install Git LFS Files
 
-```bash
-cd backend
-
-# Create a virtual environment
-python -m venv venv
-
-# Activate it
-source venv/bin/activate          # Linux/macOS
-# venv\Scripts\activate           # Windows
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Run the server
-uvicorn main:app --reload
+```powershell
+git lfs install
+git lfs pull
 ```
 
-- API base URL: `http://localhost:8000`
-- Interactive API docs (Swagger UI): `http://localhost:8000/docs`
+### Create Python Environment
 
-### 3. Set Up the Frontend
-
-Open a new terminal:
-
-```bash
-cd frontend
-npm install
-npm run dev
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install ultralytics opencv-python numpy
 ```
 
-- Dashboard URL: `http://localhost:5173`
+If PowerShell blocks activation:
 
-### 4. Run with Docker Compose (Recommended for Full-Stack)
-
-```bash
-# Copy the environment template
-cp .env.example .env
-
-# Start all services (backend, frontend, PostgreSQL)
-docker-compose up -d
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
+.\.venv\Scripts\Activate.ps1
 ```
-
-This starts the backend, frontend, and database in a single command.
 
 ---
 
-## Usage
+## Running the Demo
 
-Once the services are running:
+Run two terminals.
 
-1. Open the dashboard at `http://localhost:5173`
-2. Add a classroom or device via the **Settings** page
-3. View live occupancy, temperature, and CO₂ data on the **Dashboard**
-4. Use **Scene Presets** to apply one-click HVAC and lighting configurations
-5. Explore **Analytics** for historical occupancy and energy trends
-6. Use the **API docs** at `http://localhost:8000/docs` to test endpoints directly
+### Terminal 1: Model API
 
-### Example: Get Classroom Occupancy
-
-```bash
-curl http://localhost:8000/api/occupancy/1
+```powershell
+.\.venv\Scripts\Activate.ps1
+python data_science\model_service.py
 ```
 
-### Example: Apply a Lighting Scene
+Check:
 
-```bash
-curl -X POST http://localhost:8000/api/controls/scene \
-  -H "Content-Type: application/json" \
-  -d '{"classroom_id": 1, "scene": "presentation"}'
+```powershell
+Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8080/health
+```
+
+### Terminal 2: Backend and Dashboard
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+python developer\backend\backend_simulation_server.py
+```
+
+Open:
+
+```text
+http://127.0.0.1:8090
+```
+
+### Dashboard Demo Steps
+
+1. Click `Choose video`.
+2. Select a video from `videos/`.
+3. Click `Start video`.
+4. Watch people count, occupancy, and AC state update.
+5. Try `Auto`, `AC ON`, and `AC OFF`.
+6. Click LOW, MEDIUM, or HIGH policy cards to edit ranges and temperatures.
+
+---
+
+## Docker Model API
+
+The Docker image runs only the model API service. The backend/dashboard still runs with Python.
+
+### Build
+
+```powershell
+docker build -f Dockerfile.model -t smartbreeze-human-counter .
+```
+
+### Run
+
+```powershell
+docker run --rm -p 8080:8080 smartbreeze-human-counter
+```
+
+If port `8080` is already used:
+
+```powershell
+docker run --rm -p 8081:8080 smartbreeze-human-counter
+```
+
+Then start the backend with:
+
+```powershell
+python developer\backend\backend_simulation_server.py --model-url http://127.0.0.1:8081/count
+```
+
+### Test Count Endpoint
+
+```powershell
+$imagePath = "datasets\test\images\HIGH_0015.jpg"
+$bytes = [System.IO.File]::ReadAllBytes((Resolve-Path $imagePath))
+
+$response = Invoke-WebRequest `
+  -UseBasicParsing `
+  -Uri "http://127.0.0.1:8080/count" `
+  -Method Post `
+  -Body $bytes `
+  -ContentType "image/jpeg"
+
+$response.Content | ConvertFrom-Json
 ```
 
 ---
 
 ## API Endpoints
 
-### Health & Status
+### Model API
+
+Base URL:
+
+```text
+http://127.0.0.1:8080
+```
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/api/health` | Health check |
-| `GET` | `/api/status` | Detailed system status |
+| `GET` | `/health` | Check model service health |
+| `POST` | `/count` | Count people from raw JPG/PNG image bytes |
 
-### Classrooms
+Example `/count` response:
+
+```json
+{
+  "person_count": 2,
+  "detections": [
+    {
+      "class_id": 0,
+      "class_name": "person",
+      "confidence": 0.7726,
+      "box_xyxy": [100.1, 50.2, 180.4, 260.7]
+    }
+  ],
+  "model_path": "model/best.pt",
+  "confidence_threshold": 0.35
+}
+```
+
+### Backend/Dashboard API
+
+Base URL:
+
+```text
+http://127.0.0.1:8090
+```
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/api/classrooms` | List all classrooms |
-| `GET` | `/api/classrooms/{id}` | Get a single classroom |
-| `POST` | `/api/classrooms` | Create a new classroom |
-| `PUT` | `/api/classrooms/{id}` | Update a classroom |
-| `DELETE` | `/api/classrooms/{id}` | Delete a classroom |
-
-### Occupancy & Sensors
-
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/api/occupancy/{classroom_id}` | Get current occupancy |
-| `GET` | `/api/sensors/{classroom_id}` | Get latest sensor readings |
-| `POST` | `/api/sensors/{classroom_id}/calibrate` | Calibrate a sensor |
-
-### Controls
-
-| Method | Endpoint | Description |
-|---|---|---|
-| `POST` | `/api/controls/hvac` | Send HVAC command |
-| `POST` | `/api/controls/lighting` | Send lighting command |
-| `POST` | `/api/controls/scene` | Apply a predefined scene |
-
-### Real-time
-
-| Type | Endpoint | Description |
-|---|---|---|
-| WebSocket | `/ws/live` | Live sensor and occupancy stream |
+| `GET` | `/` | Dashboard page |
+| `GET` | `/health` | Backend health check |
+| `GET` | `/api/state` | Current simulation state |
+| `GET` | `/api/latest-frame.jpg` | Latest annotated frame |
+| `POST` | `/api/frame` | Process one raw JPG/PNG frame |
+| `POST` | `/api/policy` | Update LOW/MEDIUM/HIGH policy |
+| `POST` | `/api/ac` | Set AC mode: `AUTO`, `ON`, or `OFF` |
+| `POST` | `/api/session` | Update browser video session status |
 
 ---
 
 ## Configuration
 
-Create a `.env` file in the `backend/` directory (or use `.env.example` at the project root):
+### Model Service Environment Variables
 
-```env
-# General
-DEBUG=True
-SECRET_KEY=your-very-secret-key-here
+| Variable | Default | Description |
+|---|---:|---|
+| `MODEL_PATH` | `model/best.pt` | Path to trained model |
+| `PORT` | `8080` | Model API port |
+| `CONFIDENCE` | `0.35` | Detection confidence threshold |
+| `IMAGE_SIZE` | `960` | YOLO inference image size |
+| `IOU` | `0.45` | YOLO IOU threshold |
+| `ENABLE_BOX_FILTER` | `0` | Optional duplicate/body-part filtering |
 
-# Database
-DATABASE_URL=sqlite:///./smartbreeze.db
-# For production PostgreSQL:
-# DATABASE_URL=postgresql://user:password@localhost:5432/smartbreeze
+Example:
 
-# CORS
-CORS_ORIGINS=["http://localhost:5173"]
+```powershell
+$env:CONFIDENCE="0.20"
+$env:IMAGE_SIZE="960"
+python data_science\model_service.py
+```
 
-# AI / ML
-ENABLE_ML_INFERENCE=True
-MODEL_PATH=./ml_models/
-CONFIDENCE_THRESHOLD=0.5
+### Backend Options
 
-# MQTT (for IoT sensor integration)
-MQTT_BROKER=localhost
-MQTT_PORT=1883
-MQTT_USERNAME=
-MQTT_PASSWORD=
+```powershell
+python developer\backend\backend_simulation_server.py --help
+```
 
-# Logging
-LOG_LEVEL=INFO
+Useful options:
+
+```powershell
+--model-url http://127.0.0.1:8080/count
+--ac-on-delay-seconds 5
+--ac-off-delay-seconds 10
+--sample-seconds 1.0
+--model-timeout-seconds 120
+```
+
+Default AC delay:
+
+```text
+AC ON or temperature change -> 5 seconds
+AC OFF                     -> 10 seconds
 ```
 
 ---
 
-## Testing
+## Training Notes
 
-### Backend
+The data science workflow is documented in:
 
-```bash
-cd backend
-source venv/bin/activate
-pytest tests/ -v
+```text
+data_science/README.md
 ```
 
-### Frontend
+Main training files:
 
-```bash
-cd frontend
-npm run test
+```text
+data_science/classroom_person.yaml
+data_science/train_model.py
+data_science/prepare_cloud_dataset.py
+```
+
+Current model:
+
+```text
+model/best.pt
+```
+
+If accuracy becomes weak, clean the YOLO labels before retraining. Auto-labeling is useful as a first draft, but bad labels can teach the model to count one person twice.
+
+---
+
+## Git LFS Notes
+
+Large files are tracked with Git LFS:
+
+```text
+datasets/
+videos/
+model/*.pt
+yolo11n.pt
+```
+
+Do not commit local/generated files:
+
+```text
+.venv/
+__pycache__/
+runs/
+backend_state.json
+cloud_training_dataset.zip
+model/best_current.pt
 ```
 
 ---
 
-## Deployment
+## Team Handoff
 
-### Docker Compose
+### For Demo Presenter
 
-```bash
-docker-compose up -d --build
+Use the branch:
+
+```text
+complete-working-system
 ```
 
-### Production Checklist
+Recommended demo mode:
 
-- Use PostgreSQL instead of SQLite
-- Set strong `SECRET_KEY`
-- Disable `DEBUG` mode
-- Configure HTTPS / reverse proxy (e.g., Nginx, Traefik, Caddy)
-- Set up environment variables securely
-- Configure monitoring and logging
-- Use a managed MQTT broker for IoT devices
+```text
+Docker -> model API
+Python -> backend/dashboard
+Browser -> dashboard
+```
 
----
+Commands:
 
-## Contributing
+```powershell
+docker run --rm -p 8080:8080 smartbreeze-human-counter
+```
 
-Contributions are welcome! Please follow these steps:
+```powershell
+.\.venv\Scripts\Activate.ps1
+python developer\backend\backend_simulation_server.py
+```
 
-1. Fork the repository
-2. Create a new branch: `git checkout -b feature/your-feature-name`
-3. Make your changes and commit them: `git commit -m "Add your feature"`
-4. Push to the branch: `git push origin feature/your-feature-name`
-5. Open a Pull Request with a clear description of your changes
+Open:
 
-Please ensure your code follows the existing style and includes tests where applicable.
+```text
+http://127.0.0.1:8090
+```
 
----
+### Team Responsibilities
 
-## Team
-
-| Role | Members |
+| Area | Files |
 |---|---|
-| **Product Owner** | P. Gowsihan |
-| **Scrum Master** | N. Makeja |
-| **App Developers** | K.M.J. Bingusara Abhishek, Yasitha Rukshan Samarasingha, I.G.S.C. Dasanayaka |
-| **Data Scientists** | Mohammed Saad, Rajavisahan Kajaanan, Nahananthiny Gnanakrishnabalasingham |
+| Data Science | `data_science/`, `model/`, `datasets/`, `Dockerfile.model` |
+| Backend | `developer/backend/` |
+| Frontend | `developer/frontend/dashboard.html` |
+| Demo Assets | `videos/` |
+
+---
+
+## Project Status
+
+The current branch contains a complete working prototype:
+
+```text
+AI model API -> backend simulation -> dashboard -> Docker model container
+```
+
+The system is ready for demo testing and GitHub pull request review.
