@@ -1,0 +1,1148 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SmartBreeze Control Center</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #080b10;
+      --panel: #101720;
+      --panel-2: #0c121a;
+      --ink: #eef5ff;
+      --muted: #92a3b8;
+      --line: #223044;
+      --blue: #4aa3ff;
+      --cyan: #35d6c7;
+      --green: #2fd17c;
+      --amber: #f0a63a;
+      --red: #ff5d5d;
+      --shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 18% -10%, rgba(53, 214, 199, 0.16), transparent 34rem),
+        radial-gradient(circle at 84% 8%, rgba(74, 163, 255, 0.14), transparent 30rem),
+        var(--bg);
+      color: var(--ink);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    main {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: end;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 30px;
+      line-height: 1.12;
+    }
+
+    .sub, .label, .hint, .status {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    button, .file-button {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #132033;
+      color: var(--ink);
+      cursor: pointer;
+      font-size: 14px;
+      min-height: 38px;
+      padding: 0 14px;
+    }
+
+    button:hover, .file-button:hover {
+      border-color: var(--blue);
+      background: #172940;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, #176dd9, #159c90);
+      border-color: transparent;
+      font-weight: 700;
+    }
+
+    input[type="file"] { display: none; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .panel {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 60%), var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 18px;
+      min-height: 132px;
+    }
+
+    .span-3 { grid-column: span 3; }
+    .span-4 { grid-column: span 4; }
+    .span-5 { grid-column: span 5; }
+    .span-7 { grid-column: span 7; }
+    .span-12 { grid-column: span 12; }
+
+    .label {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .value {
+      font-size: 38px;
+      font-weight: 800;
+      line-height: 1.05;
+      overflow-wrap: anywhere;
+    }
+
+    .metric-foot {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 10px;
+    }
+
+    .status-pill, .occupancy-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 34px;
+      border-radius: 999px;
+      padding: 0 13px;
+      border: 1px solid var(--line);
+      background: #0b121b;
+      font-weight: 700;
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--muted);
+      box-shadow: 0 0 0 5px rgba(146, 163, 184, 0.12);
+    }
+
+    .running .dot { background: var(--green); box-shadow: 0 0 0 5px rgba(47, 209, 124, 0.13); }
+    .complete .dot { background: var(--blue); box-shadow: 0 0 0 5px rgba(74, 163, 255, 0.13); }
+    .waiting .dot { background: var(--amber); box-shadow: 0 0 0 5px rgba(240, 166, 58, 0.13); }
+
+    .occupancy-pill {
+      border: 0;
+      color: #061016;
+      min-height: 50px;
+      min-width: 132px;
+      justify-content: center;
+      font-size: 22px;
+    }
+
+    .low { background: #8da2b8; }
+    .medium { background: var(--amber); }
+    .high { background: var(--red); color: #210606; }
+
+    .gauge {
+      height: 12px;
+      background: #07101a;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 16px;
+    }
+
+    .gauge-fill {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, var(--cyan), var(--amber), var(--red));
+      transition: width 240ms ease;
+    }
+
+    .rule-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .video-stage {
+      position: relative;
+      min-height: 430px;
+      overflow: hidden;
+      padding: 0;
+      background: #03070d;
+    }
+
+    .video-frame {
+      display: block;
+      width: 100%;
+      height: 100%;
+      min-height: 430px;
+      object-fit: contain;
+      background: #03070d;
+    }
+
+    .video-empty {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      text-align: center;
+      padding: 26px;
+      background: repeating-linear-gradient(
+        135deg,
+        #060b12 0,
+        #060b12 12px,
+        #08111c 12px,
+        #08111c 24px
+      );
+    }
+
+    .video-hud {
+      position: absolute;
+      left: 14px;
+      right: 14px;
+      bottom: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      background: rgba(3, 7, 13, 0.78);
+      padding: 12px;
+      backdrop-filter: blur(12px);
+    }
+
+    .hud-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .hud-chip {
+      min-height: 34px;
+      border-radius: 999px;
+      background: rgba(16, 23, 32, 0.9);
+      border: 1px solid var(--line);
+      padding: 8px 12px;
+      font-size: 13px;
+      color: var(--ink);
+    }
+
+    .segmented {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .segmented button {
+      padding: 0 10px;
+      font-size: 13px;
+    }
+
+    .segmented button.active {
+      border-color: var(--cyan);
+      background: rgba(53, 214, 199, 0.16);
+      color: var(--ink);
+      box-shadow: 0 0 0 1px rgba(53, 214, 199, 0.35);
+    }
+
+    .rule {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel-2);
+      padding: 12px;
+    }
+
+    .policy-card {
+      width: 100%;
+      min-height: 96px;
+      text-align: left;
+    }
+
+    .policy-card.active {
+      border-color: var(--cyan);
+      box-shadow: 0 0 0 1px rgba(53, 214, 199, 0.45);
+    }
+
+    .rule strong {
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    .policy-editor {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #0b121b;
+      margin-top: 14px;
+      padding: 12px;
+    }
+
+    .editor-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      align-items: end;
+    }
+
+    .policy-editor .primary {
+      margin-top: 12px;
+      width: min(210px, 100%);
+    }
+
+    .policy-controls {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+      gap: 10px;
+      align-items: end;
+      margin-top: 14px;
+    }
+
+    .number-field {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    input[type="number"], .field-select {
+      width: 100%;
+      min-width: 0;
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #101926;
+      color: var(--ink);
+      padding: 0 10px;
+      font-size: 14px;
+    }
+
+    input:disabled {
+      color: var(--muted);
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+
+    .timeline-tools {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    select {
+      min-height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #101926;
+      color: var(--ink);
+      padding: 0 10px;
+    }
+
+    .timeline {
+      display: grid;
+      max-height: 330px;
+      overflow: auto;
+      border-top: 1px solid var(--line);
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 150px 96px 92px 90px 1fr;
+      gap: 10px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--line);
+      font-size: 14px;
+      align-items: center;
+    }
+
+    .empty {
+      color: var(--muted);
+      padding: 22px 0;
+    }
+
+    .upload-preview {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 14px;
+      align-items: center;
+      margin-top: 14px;
+    }
+
+    .preview-box {
+      width: 120px;
+      aspect-ratio: 4 / 3;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #07101a;
+      object-fit: cover;
+    }
+
+    .mono {
+      font-family: Consolas, Monaco, monospace;
+      font-size: 13px;
+    }
+
+    @media (max-width: 920px) {
+      header { grid-template-columns: 1fr; }
+      .toolbar { justify-content: flex-start; }
+      .span-3, .span-4, .span-5, .span-7, .span-12 { grid-column: span 12; }
+      .rule-grid { grid-template-columns: 1fr; }
+      .editor-grid { grid-template-columns: 1fr; }
+      .policy-controls { grid-template-columns: 1fr; }
+      .segmented { grid-template-columns: 1fr; }
+      .row { grid-template-columns: 1fr 1fr; }
+      .upload-preview { grid-template-columns: 1fr; }
+      .video-stage, .video-frame { min-height: 280px; }
+    }
+
+    @media (max-width: 1120px) {
+      .editor-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>SmartBreeze Control Center</h1>
+        <div class="sub">Backend consumes AI person count and controls the AC simulation.</div>
+      </div>
+      <div class="toolbar">
+        <button id="pauseBtn">Pause live</button>
+      </div>
+    </header>
+
+    <section class="grid">
+      <article class="panel span-12 video-stage">
+        <img class="video-frame" id="videoFrame" alt="Live annotated classroom frame">
+        <div class="video-empty" id="videoEmpty">
+          <div>
+            <strong>No video frame yet</strong>
+            <div class="metric-foot">Start a local video or connect a webcam below.</div>
+          </div>
+        </div>
+        <div class="video-hud">
+          <div class="hud-group">
+            <span class="hud-chip" id="hudPeople">0 people</span>
+            <span class="hud-chip" id="hudOccupancy">LOW</span>
+            <span class="hud-chip" id="hudAc">AC OFF</span>
+          </div>
+          <div class="hud-chip mono" id="hudFrame">Frame --</div>
+        </div>
+      </article>
+
+      <article class="panel span-3">
+        <div class="label">Service Status <span id="timestamp">--</span></div>
+        <div class="status-pill waiting" id="statusPill"><span class="dot"></span><span id="status">Waiting</span></div>
+        <div class="metric-foot" id="source">Source: --</div>
+      </article>
+
+      <article class="panel span-3">
+        <div class="label">Occupancy Level</div>
+        <div class="occupancy-pill low" id="occupancy">LOW</div>
+        <div class="gauge"><div class="gauge-fill" id="gauge"></div></div>
+        <div class="metric-foot" id="frame">Frame --</div>
+      </article>
+
+      <article class="panel span-3">
+        <div class="label">Detected People</div>
+        <div class="value" id="people">0</div>
+        <div class="metric-foot">From Data Scientist model API</div>
+      </article>
+
+      <article class="panel span-3">
+        <div class="label">AC Command</div>
+        <div class="value" id="ac">OFF</div>
+        <div class="metric-foot" id="temp">No cooling</div>
+        <div class="segmented" id="acControls">
+          <button class="active" data-ac-mode="AUTO" type="button">Auto</button>
+          <button data-ac-mode="ON" type="button">AC ON</button>
+          <button data-ac-mode="OFF" type="button">AC OFF</button>
+        </div>
+        <div class="metric-foot mono" id="acModeText">Mode: Auto policy</div>
+      </article>
+
+      <article class="panel span-5">
+        <div class="label">Control Policy</div>
+        <div class="rule-grid">
+          <button class="rule policy-card active" data-policy-level="LOW" type="button">
+            <strong>LOW</strong><span class="hint" id="lowRange">0-2 people</span><br><span class="hint" id="lowAc">AC OFF</span>
+          </button>
+          <button class="rule policy-card" data-policy-level="MEDIUM" type="button">
+            <strong>MEDIUM</strong><span class="hint" id="mediumRange">3-9 people</span><br><span class="hint" id="mediumAc">AC ON, 24 C</span>
+          </button>
+          <button class="rule policy-card" data-policy-level="HIGH" type="button">
+            <strong>HIGH</strong><span class="hint" id="highRange">10+ people</span><br><span class="hint" id="highAc">AC ON, 20 C</span>
+          </button>
+        </div>
+        <div class="policy-editor">
+          <div class="label"><span id="policyEditorTitle">LOW Settings</span></div>
+          <div class="editor-grid">
+            <label class="number-field" for="policyMinInput">
+              Min people
+              <input id="policyMinInput" type="number" min="0" step="1" value="0">
+            </label>
+            <label class="number-field" for="policyMaxInput">
+              Max people
+              <input id="policyMaxInput" type="number" min="0" step="1" value="2" placeholder="blank = no max">
+            </label>
+            <label class="number-field" for="policyAcStateInput">
+              AC mode
+              <select class="field-select" id="policyAcStateInput">
+                <option value="OFF">AC OFF</option>
+                <option value="ON">AC ON</option>
+              </select>
+            </label>
+            <label class="number-field" for="policyTempInput">
+              Temperature C
+              <input id="policyTempInput" type="number" min="16" max="30" step="1" value="24">
+            </label>
+          </div>
+          <button class="primary" id="applyPolicyBtn">Apply selected policy</button>
+          <div class="metric-foot mono" id="policyStatus">Click LOW, MEDIUM, or HIGH to edit that policy.</div>
+        </div>
+        <div class="metric-foot" id="delayText">AC ON/temperature changes apply after 5 seconds. AC OFF applies after 10 seconds.</div>
+        <div class="metric-foot" id="pending">Pending AC change: none</div>
+        <div class="metric-foot" id="change">Last AC change: --</div>
+        <div class="metric-foot">AC runtime: <strong id="runtime">0s</strong></div>
+      </article>
+
+      <article class="panel span-7">
+        <div class="label">Input Source</div>
+        <div class="hint">Use a local classroom video or connect a webcam. Frames are sent to the backend for human counting and AC control.</div>
+        <div class="upload-preview">
+          <video class="preview-box" id="videoPreview" controls muted playsinline></video>
+          <div>
+            <button id="chooseVideoBtn">Choose video</button>
+            <input id="videoInput" type="file" accept="video/*">
+            <button class="primary" id="startVideoBtn" disabled>Start video</button>
+            <button class="primary" id="webcamBtn">Connect webcam</button>
+            <button id="stopVideoBtn" disabled>Stop</button>
+            <div class="metric-foot mono" id="videoStatus">No video selected. Webcam not connected.</div>
+          </div>
+        </div>
+      </article>
+
+      <article class="panel span-12">
+        <div class="timeline-tools">
+          <div>
+            <div class="label">Occupancy Timeline</div>
+            <div class="hint">Newest events appear first.</div>
+          </div>
+          <select id="timelineFilter">
+            <option value="ALL">All levels</option>
+            <option value="LOW">LOW only</option>
+            <option value="MEDIUM">MEDIUM only</option>
+            <option value="HIGH">HIGH only</option>
+          </select>
+        </div>
+        <div class="timeline" id="timeline"></div>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    let currentState = null;
+    let polling = true;
+    let lastImageKey = null;
+    let videoFile = null;
+    let activeStream = null;
+    let detectionRunning = false;
+    let detectionFrame = 0;
+    let videoObjectUrl = null;
+    let detectionMode = null;
+    let livePaused = false;
+
+    function secondsLabel(value) {
+      const seconds = Math.floor(Number(value || 0));
+      const minutes = Math.floor(seconds / 60);
+      const rest = seconds % 60;
+      return minutes ? `${minutes}m ${rest}s` : `${rest}s`;
+    }
+
+    function levelClass(level) {
+      return String(level || "LOW").toLowerCase();
+    }
+
+    function setStatus(status) {
+      const normalized = String(status || "waiting").toLowerCase();
+      const pill = document.getElementById("statusPill");
+      pill.className = "status-pill";
+      if (normalized.includes("complete")) pill.classList.add("complete");
+      else if (normalized.includes("running")) pill.classList.add("running");
+      else pill.classList.add("waiting");
+      document.getElementById("status").textContent = String(status || "waiting").replaceAll("_", " ");
+    }
+
+    function updateAcControls(state) {
+      const mode = String(state.ac_control_mode || "AUTO").toUpperCase();
+      document.querySelectorAll("#acControls button").forEach(button => {
+        button.classList.toggle("active", button.dataset.acMode === mode);
+      });
+      document.getElementById("acModeText").textContent =
+        mode === "AUTO" ? "Mode: Auto policy" : `Mode: Manual AC ${mode}`;
+    }
+
+    const LEVELS = ["LOW", "MEDIUM", "HIGH"];
+    const DEFAULT_POLICY = {
+      LOW: { min: 0, max: 2, ac_state: "OFF", temperature_c: null },
+      MEDIUM: { min: 3, max: 9, ac_state: "ON", temperature_c: 24 },
+      HIGH: { min: 10, max: null, ac_state: "ON", temperature_c: 20 }
+    };
+    let selectedPolicyLevel = "LOW";
+
+    function clonePolicy(policy) {
+      const source = policy || DEFAULT_POLICY;
+      const copy = {};
+      LEVELS.forEach(level => {
+        copy[level] = { ...DEFAULT_POLICY[level], ...(source[level] || {}) };
+      });
+      return copy;
+    }
+
+    function rangeText(rule) {
+      return rule.max === null || rule.max === undefined || rule.max === ""
+        ? `${rule.min}+ people`
+        : `${rule.min}-${rule.max} people`;
+    }
+
+    function acText(rule) {
+      return rule.ac_state === "OFF" ? "AC OFF" : `AC ON, ${rule.temperature_c} C`;
+    }
+
+    function setPolicyEditor(policy) {
+      const rule = policy[selectedPolicyLevel];
+      const editor = document.querySelector(".policy-editor");
+      const tempInput = document.getElementById("policyTempInput");
+      document.getElementById("policyEditorTitle").textContent = `${selectedPolicyLevel} Settings`;
+      document.getElementById("policyMinInput").value = rule.min;
+      document.getElementById("policyMaxInput").value = rule.max ?? "";
+      document.getElementById("policyAcStateInput").value = rule.ac_state;
+      tempInput.value = rule.ac_state === "OFF" ? "" : (rule.temperature_c ?? 24);
+      tempInput.placeholder = rule.ac_state === "OFF" ? "AC off" : "16-30";
+      tempInput.disabled = rule.ac_state === "OFF";
+      editor.dataset.level = selectedPolicyLevel;
+    }
+
+    function updatePolicyDisplay(state) {
+      const policy = clonePolicy(state.policy);
+      document.getElementById("lowRange").textContent = rangeText(policy.LOW);
+      document.getElementById("mediumRange").textContent = rangeText(policy.MEDIUM);
+      document.getElementById("highRange").textContent = rangeText(policy.HIGH);
+      document.getElementById("lowAc").textContent = acText(policy.LOW);
+      document.getElementById("mediumAc").textContent = acText(policy.MEDIUM);
+      document.getElementById("highAc").textContent = acText(policy.HIGH);
+
+      document.querySelectorAll(".policy-card").forEach(card => {
+        card.classList.toggle("active", card.dataset.policyLevel === selectedPolicyLevel);
+      });
+
+      const editor = document.querySelector(".policy-editor");
+      if (!editor.contains(document.activeElement)) {
+        setPolicyEditor(policy);
+      }
+    }
+
+    function renderTimeline(state) {
+      const filter = document.getElementById("timelineFilter").value;
+      const items = (state.timeline || [])
+        .filter(item => filter === "ALL" || item.occupancy === filter)
+        .slice(-40)
+        .reverse();
+
+      const timeline = document.getElementById("timeline");
+      if (!items.length) {
+        timeline.innerHTML = '<div class="empty">No matching timeline events yet.</div>';
+        return;
+      }
+
+      timeline.innerHTML = items.map(item => `
+        <div class="row">
+          <div>${item.timestamp || "--"}</div>
+          <div><span class="status-pill ${levelClass(item.occupancy)}">${item.occupancy || "--"}</span></div>
+          <div>${item.person_count ?? 0} people</div>
+          <div>AC ${item.ac_state || "OFF"}</div>
+          <div>${item.temperature_c ? item.temperature_c + " C" : "No cooling"}</div>
+        </div>
+      `).join("");
+    }
+
+    function update(state) {
+      currentState = state;
+      const level = state.occupancy || "LOW";
+      const people = Number(state.person_count || 0);
+      const occupancy = document.getElementById("occupancy");
+      const pendingSeconds = Math.ceil(Number(state.pending_seconds_remaining || 0));
+      const pendingTarget = state.pending_temperature_c
+        ? `${state.pending_ac_state} ${state.pending_temperature_c} C`
+        : `${state.pending_ac_state}`;
+      const pendingText = state.pending_ac_state
+        ? `Pending AC ${pendingTarget} in ${pendingSeconds}s`
+        : "Pending AC change: none";
+
+      occupancy.textContent = level;
+      occupancy.className = "occupancy-pill " + levelClass(level);
+      document.getElementById("people").textContent = people;
+      document.getElementById("ac").textContent = state.ac_state || "OFF";
+      document.getElementById("temp").textContent = state.temperature_c ? `${state.temperature_c} C` : "No cooling";
+      document.getElementById("runtime").textContent = secondsLabel(state.ac_runtime_seconds);
+      document.getElementById("source").textContent = `Source: ${state.source || "--"}`;
+      document.getElementById("frame").textContent = `Frame ${state.frame ?? "--"}`;
+      document.getElementById("hudPeople").textContent = `${people} people`;
+      document.getElementById("hudOccupancy").textContent = level;
+      document.getElementById("hudAc").textContent = state.pending_ac_state
+        ? `AC ${state.ac_state || "OFF"} -> ${state.pending_ac_state} in ${pendingSeconds}s`
+        : `AC ${state.ac_state || "OFF"}`;
+      document.getElementById("hudFrame").textContent = `Frame ${state.frame ?? "--"}`;
+      document.getElementById("timestamp").textContent = state.timestamp || "--";
+      document.getElementById("delayText").textContent = `AC ON/temperature changes apply after ${Math.round(Number(state.ac_on_delay_seconds || 5))} seconds. AC OFF applies after ${Math.round(Number(state.ac_off_delay_seconds || 10))} seconds.`;
+      document.getElementById("pending").textContent = pendingText;
+      document.getElementById("change").textContent = `Last AC change: ${state.last_ac_change || "--"}`;
+      document.getElementById("gauge").style.width = `${Math.min(100, Math.round((people / 12) * 100))}%`;
+      setStatus(state.status);
+      updateAcControls(state);
+      updatePolicyDisplay(state);
+      renderTimeline(state);
+
+      const imageKey = `${state.frame ?? 0}|${state.timestamp || ""}`;
+      if (imageKey !== lastImageKey) {
+        lastImageKey = imageKey;
+        const image = document.getElementById("videoFrame");
+        image.onload = () => {
+          document.getElementById("videoEmpty").style.display = "none";
+        };
+        image.onerror = () => {
+          document.getElementById("videoEmpty").style.display = "grid";
+        };
+        image.src = `/api/latest-frame.jpg?frame=${encodeURIComponent(state.frame ?? 0)}&t=${Date.now()}`;
+      }
+    }
+
+    async function poll() {
+      if (!polling) return;
+      try {
+        const response = await fetch("/api/state", { cache: "no-store" });
+        update(await response.json());
+      } catch {
+        setStatus("backend not reachable");
+      }
+    }
+
+    document.getElementById("pauseBtn").addEventListener("click", async () => {
+      polling = !polling;
+      document.getElementById("pauseBtn").textContent = polling ? "Pause live" : "Resume live";
+      if (polling) {
+        livePaused = false;
+        if (detectionMode === "video" && videoFile && videoPreview.paused) {
+          try {
+            await videoPreview.play();
+            startDetectionLoop("video");
+          } catch (error) {
+            setVideoStatus(`Video error: ${error.message}`);
+          }
+        } else if (detectionMode === "webcam" && activeStream) {
+          startDetectionLoop("webcam");
+        }
+        poll();
+      } else {
+        livePaused = true;
+        detectionRunning = false;
+        if (detectionMode === "video") {
+          videoPreview.pause();
+        }
+        setVideoStatus(detectionMode ? "Live processing paused." : "Live dashboard paused.");
+      }
+    });
+
+    document.getElementById("timelineFilter").addEventListener("change", () => {
+      if (currentState) renderTimeline(currentState);
+    });
+
+    const videoInput = document.getElementById("videoInput");
+    const videoPreview = document.getElementById("videoPreview");
+    const videoStatus = document.getElementById("videoStatus");
+    const chooseVideoBtn = document.getElementById("chooseVideoBtn");
+    const startVideoBtn = document.getElementById("startVideoBtn");
+    const webcamBtn = document.getElementById("webcamBtn");
+    const stopVideoBtn = document.getElementById("stopVideoBtn");
+    const policyMinInput = document.getElementById("policyMinInput");
+    const policyMaxInput = document.getElementById("policyMaxInput");
+    const policyAcStateInput = document.getElementById("policyAcStateInput");
+    const policyTempInput = document.getElementById("policyTempInput");
+    const applyPolicyBtn = document.getElementById("applyPolicyBtn");
+    const policyStatus = document.getElementById("policyStatus");
+
+    function setVideoStatus(message) {
+      videoStatus.textContent = message;
+    }
+
+    document.querySelectorAll("#acControls button").forEach(button => {
+      button.addEventListener("click", async () => {
+        const mode = button.dataset.acMode;
+        document.getElementById("acModeText").textContent = `Applying ${mode} mode...`;
+        try {
+          const response = await fetch("/api/ac", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ mode })
+          });
+          const state = await response.json();
+          if (!response.ok) throw new Error(state.message || "AC control failed");
+          update(state);
+        } catch (error) {
+          document.getElementById("acModeText").textContent = `AC control error: ${error.message}`;
+        }
+      });
+    });
+
+    async function setBackendSessionStatus(status) {
+      try {
+        const response = await fetch("/api/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status })
+        });
+        const state = await response.json();
+        if (response.ok) update(state);
+      } catch {
+        setStatus(status);
+      }
+    }
+
+    function parsePolicyEditor() {
+      const min = Number.parseInt(policyMinInput.value, 10);
+      const max = policyMaxInput.value.trim() === "" ? null : Number.parseInt(policyMaxInput.value, 10);
+      const acState = policyAcStateInput.value;
+      const temperature = acState === "OFF" ? null : Number.parseInt(policyTempInput.value, 10);
+
+      if (!Number.isInteger(min)) throw new Error("Min people must be a whole number.");
+      if (max !== null && !Number.isInteger(max)) throw new Error("Max people must be a whole number or blank.");
+      if (min < 0) throw new Error("Min people must be 0 or higher.");
+      if (max !== null && max < min) throw new Error("Max people must be greater than or equal to min.");
+      if (temperature !== null && (!Number.isInteger(temperature) || temperature < 16 || temperature > 30)) {
+        throw new Error("Temperature must be between 16 C and 30 C.");
+      }
+
+      return { min, max, ac_state: acState, temperature_c: temperature };
+    }
+
+    function normalizeEditedPolicy(policy, level, rule) {
+      const next = clonePolicy(policy);
+      next[level] = rule;
+
+      if (level === "LOW") {
+        if (rule.min !== 0) throw new Error("LOW range must start at 0.");
+        if (rule.max === null) throw new Error("LOW max is required.");
+        next.MEDIUM.min = rule.max + 1;
+        if (next.MEDIUM.max === null || next.MEDIUM.max < next.MEDIUM.min) {
+          next.MEDIUM.max = next.MEDIUM.min;
+        }
+        next.HIGH.min = next.MEDIUM.max + 1;
+      }
+
+      if (level === "MEDIUM") {
+        if (rule.min < 1) throw new Error("MEDIUM min must be at least 1.");
+        if (rule.max === null) throw new Error("MEDIUM max is required.");
+        next.LOW.min = 0;
+        next.LOW.max = rule.min - 1;
+        next.HIGH.min = rule.max + 1;
+      }
+
+      if (level === "HIGH") {
+        if (rule.min < 1) throw new Error("HIGH min must be at least 1.");
+        next.MEDIUM.max = rule.min - 1;
+        if (next.MEDIUM.max < next.MEDIUM.min) {
+          throw new Error("HIGH min is too low for the current MEDIUM range.");
+        }
+      }
+
+      if (next.LOW.min !== 0) throw new Error("LOW range must start at 0.");
+      if (next.LOW.max === null || next.MEDIUM.max === null) {
+        throw new Error("LOW and MEDIUM max values are required.");
+      }
+      if (next.MEDIUM.min !== next.LOW.max + 1) {
+        throw new Error("MEDIUM range must start after LOW.");
+      }
+      if (next.HIGH.min !== next.MEDIUM.max + 1) {
+        throw new Error("HIGH range must start after MEDIUM.");
+      }
+      return next;
+    }
+
+    document.querySelectorAll(".policy-card").forEach(card => {
+      card.addEventListener("click", () => {
+        selectedPolicyLevel = card.dataset.policyLevel;
+        setPolicyEditor(clonePolicy(currentState?.policy));
+        updatePolicyDisplay(currentState || { policy: DEFAULT_POLICY });
+      });
+    });
+
+    policyAcStateInput.addEventListener("change", () => {
+      const acOff = policyAcStateInput.value === "OFF";
+      policyTempInput.disabled = acOff;
+      policyTempInput.placeholder = acOff ? "AC off" : "16-30";
+      if (acOff) {
+        policyTempInput.value = "";
+      } else if (!policyTempInput.value) {
+        policyTempInput.value = selectedPolicyLevel === "HIGH" ? 20 : 24;
+      }
+    });
+
+    applyPolicyBtn.addEventListener("click", async () => {
+      try {
+        const currentPolicy = clonePolicy(currentState?.policy);
+        const editedRule = parsePolicyEditor();
+        const policy = normalizeEditedPolicy(currentPolicy, selectedPolicyLevel, editedRule);
+
+        policyStatus.textContent = `Applying ${selectedPolicyLevel} policy...`;
+        const response = await fetch("/api/policy", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ policy })
+        });
+        const state = await response.json();
+        if (!response.ok) throw new Error(state.message || "Policy update failed");
+        update(state);
+        policyStatus.textContent = `${selectedPolicyLevel} policy applied.`;
+      } catch (error) {
+        policyStatus.textContent = `Policy error: ${error.message}`;
+      }
+    });
+
+    function waitForVideoReady(preview, timeoutMs = 5000) {
+      if (preview.readyState >= 2 && preview.videoWidth && preview.videoHeight) {
+        return Promise.resolve();
+      }
+
+      return new Promise((resolve, reject) => {
+        const timeout = window.setTimeout(() => {
+          cleanup();
+          reject(new Error("Video is still loading. Try an MP4 video if this file does not start."));
+        }, timeoutMs);
+
+        function cleanup() {
+          window.clearTimeout(timeout);
+          preview.removeEventListener("loadeddata", onReady);
+          preview.removeEventListener("canplay", onReady);
+          preview.removeEventListener("error", onError);
+        }
+
+        function onReady() {
+          if (preview.videoWidth && preview.videoHeight) {
+            cleanup();
+            resolve();
+          }
+        }
+
+        function onError() {
+          cleanup();
+          reject(new Error("Browser cannot play this video file. Convert it to MP4/H.264 and try again."));
+        }
+
+        preview.addEventListener("loadeddata", onReady);
+        preview.addEventListener("canplay", onReady);
+        preview.addEventListener("error", onError);
+      });
+    }
+
+    chooseVideoBtn.addEventListener("click", () => {
+      videoInput.click();
+    });
+
+    videoInput.addEventListener("change", event => {
+      const file = event.target.files[0] || null;
+      videoFile = file;
+      stopDetection();
+      setVideoStatus(videoFile ? `Selected: ${videoFile.name}` : "No video selected. Webcam not connected.");
+      startVideoBtn.disabled = !videoFile;
+      stopVideoBtn.disabled = true;
+      videoPreview.controls = true;
+      if (videoObjectUrl) URL.revokeObjectURL(videoObjectUrl);
+      videoObjectUrl = videoFile ? URL.createObjectURL(videoFile) : null;
+      videoPreview.src = videoObjectUrl || "";
+      videoPreview.srcObject = null;
+      videoPreview.load();
+    });
+
+    async function sendCurrentFrame(preview, canvas, ctx) {
+      if (!preview.videoWidth || !preview.videoHeight) {
+        setVideoStatus("Waiting for video frame...");
+        return;
+      }
+      canvas.width = preview.videoWidth;
+      canvas.height = preview.videoHeight;
+      ctx.drawImage(preview, 0, 0, canvas.width, canvas.height);
+
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.82));
+      if (!blob || !detectionRunning) return;
+
+      setVideoStatus("Sending frame to backend and model...");
+      const response = await fetch("/api/frame", {
+        method: "POST",
+        headers: { "Content-Type": "image/jpeg" },
+        body: await blob.arrayBuffer()
+      });
+      const state = await response.json();
+      if (!response.ok) throw new Error(state.message || "Frame request failed");
+      if (!detectionRunning) return;
+      update(state);
+      detectionFrame += 1;
+      setVideoStatus(`Detected ${state.person_count} people in frame ${state.frame}`);
+    }
+
+    function startDetectionLoop(mode) {
+      if (detectionRunning) return;
+      const preview = videoPreview;
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      detectionRunning = true;
+      detectionMode = mode;
+      detectionFrame = 0;
+      startVideoBtn.disabled = true;
+      webcamBtn.disabled = true;
+      stopVideoBtn.disabled = false;
+      setVideoStatus(mode === "webcam" ? "Processing webcam frames..." : "Processing video frames...");
+
+      async function loop() {
+        if (!detectionRunning) return;
+        if (preview.ended) {
+          stopDetection({
+            notifyBackend: true,
+            status: "video_complete",
+            message: "Video complete."
+          });
+          startVideoBtn.disabled = !videoFile;
+          return;
+        }
+        if (mode === "video" && preview.paused && !livePaused) {
+          stopDetection({
+            notifyBackend: true,
+            status: "stopped",
+            message: "Video stopped."
+          });
+          startVideoBtn.disabled = !videoFile;
+          return;
+        }
+
+        try {
+          await sendCurrentFrame(preview, canvas, ctx);
+        } catch (error) {
+          setVideoStatus(`${mode === "webcam" ? "Webcam" : "Video"} error: ${error.message}`);
+        }
+
+        setTimeout(() => {
+          if (detectionRunning) requestAnimationFrame(loop);
+        }, 500);
+      }
+
+      requestAnimationFrame(loop);
+    }
+
+    function stopDetection(options = {}) {
+      const {
+        notifyBackend = false,
+        status = "stopped",
+        message = null
+      } = options;
+      const preview = videoPreview;
+      detectionRunning = false;
+      detectionMode = null;
+      livePaused = false;
+      preview.pause();
+      if (activeStream) {
+        activeStream.getTracks().forEach(track => track.stop());
+        activeStream = null;
+        preview.srcObject = null;
+      }
+      startVideoBtn.disabled = !videoFile;
+      webcamBtn.disabled = false;
+      stopVideoBtn.disabled = true;
+      setVideoStatus(message || (videoFile ? "Stopped. Video ready." : "Stopped. Webcam disconnected."));
+      if (notifyBackend) setBackendSessionStatus(status);
+    }
+
+    startVideoBtn.addEventListener("click", async () => {
+      if (!videoFile) return;
+      try {
+        videoPreview.controls = true;
+        videoPreview.currentTime = 0;
+        setVideoStatus("Starting video...");
+        await videoPreview.play();
+        await waitForVideoReady(videoPreview);
+        startDetectionLoop("video");
+      } catch (error) {
+        setVideoStatus(`Video error: ${error.message}`);
+        stopDetection({ notifyBackend: true, status: "stopped", message: `Video error: ${error.message}` });
+      }
+    });
+
+    webcamBtn.addEventListener("click", async () => {
+      stopDetection();
+      try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error("Webcam needs a browser with camera access on localhost.");
+        }
+        activeStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        videoPreview.controls = false;
+        videoPreview.src = "";
+        videoPreview.srcObject = activeStream;
+        setVideoStatus("Connecting webcam...");
+        await videoPreview.play();
+        await waitForVideoReady(videoPreview);
+        setVideoStatus("Webcam connected.");
+        startDetectionLoop("webcam");
+      } catch (error) {
+        setVideoStatus(`Could not connect webcam: ${error.message}`);
+      }
+    });
+
+    stopVideoBtn.addEventListener("click", () => {
+      stopDetection({ notifyBackend: true, status: "stopped" });
+    });
+
+    setInterval(poll, 500);
+    poll();
+  </script>
+</body>
+</html>
